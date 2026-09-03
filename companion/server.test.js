@@ -17,12 +17,13 @@ test("AI instructions demand direct output", function () {
   assert.match(prompt, /Never add a preamble/);
   assert.match(prompt, /do not add headings, bullets/);
   assert.match(server.instructions("custom", "Summarize", "small"), /under 80 words/);
+  assert.doesNotMatch(server.instructions("custom", "Improve this", "default"), /under 80 words/);
   assert.match(server.instructions("structure", ""), /use #, ##, or ###/);
   assert.match(server.instructions("structure", ""), /Never replace checklist markers/);
 });
 
 test("output limit scales safely", function () {
-  assert.equal(server.outputLimit("short"), 1200);
+  assert.equal(server.outputLimit("short"), 8000);
   assert.equal(server.outputLimit("short", "large"), 6000);
 });
 

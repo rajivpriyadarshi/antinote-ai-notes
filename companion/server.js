@@ -43,7 +43,7 @@ function saveKey(provider, key) {
 }
 
 function outputLimit(content, length) {
-  return {small: 1200, medium: 2800, large: 6000}[length] || 1200;
+  return {small: 1200, medium: 2800, large: 6000}[length] || 8000;
 }
 
 function formatForAntinote(value, mode) {
@@ -69,10 +69,11 @@ function openAIOutput(data) {
 
 function instructions(mode, instruction, length) {
   if (mode === "custom") {
-    return "You edit Antinote notes. Follow the user's instruction exactly, including its requested format. If the user asks for prose or a single improved sentence, return prose or a single sentence; do not add headings, bullets, numbering, checklists, or extra sections. Preserve the original meaning and tone unless asked otherwise. Keep the result under " + ({small: 80, medium: 250, large: 700}[length] || 80) + " words. Return only the finished output. Never add a preamble, explanation, disclaimer, or meta-commentary. Do not say 'Here is', 'Based on', 'Sure', or similar.\n\nUser instruction:\n" + instruction;
+    const size = {small: " Keep the result under 80 words.", medium: " Keep the result under 250 words.", large: " Keep the result under 700 words."}[length] || "";
+    return "You edit Antinote notes. Follow the user's instruction exactly, including its requested format. If the user asks for prose or a single improved sentence, return prose or a single sentence; do not add headings, bullets, numbering, checklists, or extra sections. Preserve the original meaning and tone unless asked otherwise." + size + " Return only the finished output. Never add a preamble, explanation, disclaimer, or meta-commentary. Do not say 'Here is', 'Based on', 'Sure', or similar.\n\nUser instruction:\n" + instruction;
   }
   const request = "Organize the note into a logical structure without summarizing or shortening it. Preserve all important details, improve titles and groupings, and remove only genuine repetition. Preserve every existing checklist item and checked state as - [ ] or - [x]. Never replace checklist markers with a bare 'list' keyword.";
-  const size = {small: "Keep the result under 80 words.", medium: "Keep the result under 250 words.", large: "Keep the result under 700 words."}[length] || "Keep the result under 80 words.";
+  const size = {small: "Keep the result under 80 words.", medium: "Keep the result under 250 words.", large: "Keep the result under 700 words."}[length] || "Preserve the useful detail; do not shorten the note.";
   return "You edit Antinote notes. " + request + " " + size + " Return only the finished output. Never add a preamble, explanation, disclaimer, or meta-commentary. Do not say 'Here is', 'Based on', 'Sure', or similar. Format specifically for Antinote: use #, ##, or ### for concise headings; use - for bullets; use 1. for ordered steps; use - [ ] only for real actionable tasks. For nested lists, indent child lines with exactly two spaces and keep the same marker style. Never use tables, unicode bullets, checkbox symbols, HTML, or code fences unless explicitly requested. Be direct, crisp, and structured.";
 }
 
@@ -146,7 +147,7 @@ async function handle(request, response) {
       const provider = validProvider(config.provider) ? config.provider : "openai";
       const key = readKey(provider);
       if (!key) throw new Error("No " + PROVIDERS[provider].label + " API key is saved. Run ::ai_setup().");
-      const length = ["small", "medium", "large"].indexOf(input.length) >= 0 ? input.length : "small";
+      const length = ["small", "medium", "large"].indexOf(input.length) >= 0 ? input.length : "default";
       const output = await providerRequest(provider, key, config.model || PROVIDERS[provider].model, content, instructions(mode, instruction, length), length);
       return send(response, 200, "application/json", JSON.stringify({ok: true, output: formatForAntinote(output, mode)}));
     }
