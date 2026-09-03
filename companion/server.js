@@ -140,10 +140,14 @@ async function installLocalAI() {
         fs.unlinkSync(archive);
       }
       if (!fs.existsSync(LOCAL_MODEL_PATH)) await downloadFile(LOCAL_MODEL_URL, LOCAL_MODEL_PATH, LOCAL_MODEL_SHA256, "Qwen model (about 1.1 GB)", 5, 99);
+      saveLocalStatus({state: "starting", phase: "", percent: 99, message: "Setting up Local AI... Starting the model."});
+      await ensureLocalServer();
+      saveLocalStatus({state: "testing", phase: "", percent: 99, message: "Setting up Local AI... Testing a response."});
+      await verifyLocalAI();
       saveLocalStatus({state: "ready", phase: "", percent: 100, message: "Local AI is ready and selected."});
       saveConfig({provider: "local_llm", model: PROVIDERS.local_llm.model});
     } catch (error) {
-      saveLocalStatus({state: "error", phase: "", percent: 0, message: error.message || "Local AI download failed."});
+      saveLocalStatus({state: "error", phase: "", percent: 0, message: error.message || "Local AI setup failed."});
     } finally {
       localDownload = null;
     }
@@ -172,7 +176,8 @@ async function ensureLocalServer() {
   if (!localServer || localServer.exitCode !== null) {
     localServer = spawn(LOCAL_RUNTIME_PATH, ["-m", LOCAL_MODEL_PATH, "--host", HOST, "--port", String(LOCAL_PORT), "-c", "8192", "-ngl", "99"], {stdio: "ignore"});
   }
-  for (let attempt = 0; attempt < 50; attempt += 1) {
+  // The first model load can take longer than the network request itself.
+  for (let attempt = 0; attempt < 150; attempt += 1) {
     if (await localServerReady()) return;
     await new Promise(function (resolve) { setTimeout(resolve, 400); });
   }
@@ -192,6 +197,18 @@ async function localLLMRequest(content, system, length) {
   if (!response.ok) throw new Error("Local AI request failed.");
   if (!output || !String(output).trim()) throw new Error("Local AI returned no text.");
   return String(output).trim();
+}
+
+async function verifyLocalAI() {
+  const response = await fetch("http://" + HOST + ":" + LOCAL_PORT + "/v1/chat/completions", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({model: "local", messages: [{role: "system", content: "Reply only with the word ready."}, {role: "user", content: "Check the local model."}], temperature: 0, max_tokens: 8}),
+    signal: AbortSignal.timeout(30000)
+  });
+  const data = await response.json().catch(function () { return {}; });
+  const output = (((data.choices || [])[0] || {}).message || {}).content;
+  if (!response.ok || !output || !String(output).trim()) throw new Error("Local AI started but could not complete its test response.");
 }
 
 function outputLimit(content, length) {
@@ -299,7 +316,8 @@ function page() {
 
 function pageWithProviderControls() {
   const script = `<style>.local-ai{margin-top:18px;padding:16px;border:1px solid #3d3d3d;border-radius:9px;background:#202020}.local-ai[hidden]{display:none}.local-ai h2{margin:0;color:#f7f7f4;font:800 16px/1.2 "Avenir Next",sans-serif}.local-ai p{margin:7px 0 0;color:#aaa;font:600 12px/1.5 ui-monospace,monospace}.local-progress{height:6px;margin-top:14px;overflow:hidden;border-radius:99px;background:#383838}.local-progress span{display:block;width:0;height:100%;border-radius:inherit;background:var(--mint);transition:width .25s ease}.local-action,.local-remove{margin-top:15px;min-height:38px;padding:0 14px;border:0;border-radius:8px;cursor:pointer;font:800 13px/1 "Avenir Next",sans-serif}.local-action{color:#10241d;background:var(--mint)}.local-remove{margin-left:8px;color:#ff9d88;background:transparent;border:1px solid #72392f}.local-action[disabled],.local-remove[disabled]{cursor:default;opacity:.65}.local-meta{margin-top:10px;color:#aaa;font:700 11px/1.4 ui-monospace,monospace}</style><script>(function(){const provider=document.getElementById('provider'),model=document.getElementById('model'),key=document.getElementById('apiKey'),status=document.querySelector('.status'),hint=document.querySelector('.hint'),local=document.createElement('section');let poller=null;local.className='local-ai';local.hidden=true;local.innerHTML='<h2>Local AI</h2><p>Qwen 2.5 1.5B runs entirely on this Mac. One-time download: about 1.1 GB.</p><div class="local-progress"><span></span></div><div class="local-meta">Checking local model...</div><button class="local-action" type="button">Download Local AI</button><button class="local-remove" type="button" hidden>Remove Local AI</button>';model.closest('.field').after(local);const bar=local.querySelector('.local-progress span'),meta=local.querySelector('.local-meta'),action=local.querySelector('.local-action'),remove=local.querySelector('.local-remove');function cloud(){status.innerHTML='<i></i>Save an API key to process notes.';hint.textContent='Your key is stored in macOS Keychain. Notes go only to the provider selected above. API usage is billed by that provider.'}function showLocalState(data){const state=data.state||'not-installed',percent=Number(data.percent)||0;bar.style.width=percent+'%';meta.textContent=data.message||'Local AI status unavailable.';remove.hidden=state!=='ready';if(state==='ready'){action.textContent='Local AI selected';action.disabled=true;status.innerHTML='<i></i>Local AI is ready. No API key is needed.';hint.textContent='Your notes stay on this Mac. Local AI starts automatically when you run a command.'}else if(state==='downloading'||state==='installing'){action.textContent='Downloading... '+percent+'%';action.disabled=true;status.innerHTML='<i></i>Preparing Local AI...'}else if(state==='error'){action.textContent='Try download again';action.disabled=false;status.innerHTML='<i></i>Local AI needs attention.'}else{action.textContent='Download Local AI';action.disabled=false;status.innerHTML='<i></i>Download a private, key-free model.'}}async function refresh(){try{const response=await fetch('/local/status');const data=await response.json();showLocalState(data.local||{})}catch(error){meta.textContent='Could not check Local AI status.'}}function poll(){clearInterval(poller);refresh();poller=setInterval(refresh,900)}function update(){const selected=provider.value,localProvider=selected==='apple_intelligence'||selected==='local_llm';model.closest('.field').hidden=localProvider;key.closest('.field').hidden=localProvider;local.hidden=selected!=='local_llm';if(selected==='local_llm'){poll()}else{clearInterval(poller);if(selected==='apple_intelligence'){status.innerHTML='<i></i>Apple Intelligence is selected. No API key is needed.';hint.textContent='Your note stays on this Mac and is processed by the Apple Intelligence model.'}else{cloud()}}}action.addEventListener('click',async()=>{action.disabled=true;try{await fetch('/local/download',{method:'POST'});poll()}catch(error){action.disabled=false;meta.textContent='Could not start download.'}});remove.addEventListener('click',async()=>{if(!confirm('Remove Local AI? This deletes the downloaded model and local runtime.'))return;remove.disabled=true;try{const response=await fetch('/local/delete',{method:'POST'});const data=await response.json();if(!data.ok)throw new Error();provider.value='openai';update()}catch(error){remove.disabled=false;meta.textContent='Could not remove Local AI.'}});provider.addEventListener('change',update);update()})()</script>`;
-  return page().replace("</body>", script + "</body>");
+  const setupStateScript = `<script>(function(){async function sync(){const panel=document.querySelector('.local-ai');if(!panel||panel.hidden)return;try{const response=await fetch('/local/status'),data=await response.json(),local=data.local||{};if(local.state!=='starting'&&local.state!=='testing')return;panel.querySelector('.local-progress span').style.width=(local.percent||99)+'%';panel.querySelector('.local-meta').textContent=local.message||'Setting up Local AI...';const action=panel.querySelector('.local-action');action.textContent='Setting up Local AI...';action.disabled=true;document.querySelector('.status').innerHTML='<i></i>Setting up Local AI...';document.querySelector('.hint').textContent='Starting the model and verifying a test response on this Mac.'}catch(error){}}setInterval(sync,750);sync()})()</script>`;
+  return page().replace("</body>", script + setupStateScript + "</body>");
 }
 
 function readBody(request, limit) { return new Promise(function (resolve, reject) { let body = ""; request.on("data", function (chunk) { body += chunk; if (body.length > limit) { reject(new Error("Request is too large.")); request.destroy(); } }); request.on("end", function () { resolve(body); }); request.on("error", reject); }); }

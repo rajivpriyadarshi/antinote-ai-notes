@@ -19,6 +19,16 @@
     }).join("\n").replace(/\n{3,}$/g, "\n\n");
   }
 
+  function aiArguments(text) {
+    const line = String(text || "").split(/\r?\n/).reverse().find(function (value) {
+      return /^\s*::ai\(.*\)\s*$/.test(value);
+    });
+    const match = line && line.match(/^\s*::ai\((.*)\)\s*$/);
+    const raw = match ? match[1].trim() : "";
+    const lengthMatch = raw.match(/^(.*),\s*(small|medium|large)\s*$/i);
+    return lengthMatch ? {prompt: lengthMatch[1].trim(), length: lengthMatch[2].toLowerCase()} : {prompt: raw, length: "default"};
+  }
+
   function parseResult(result) {
     if (!result || !result.success) return {ok: false, error: "AI Notes is not running. Run the installer, then try again."};
     try { return JSON.parse(result.data); } catch (error) { return {ok: false, error: "AI Notes returned an invalid response."}; }
@@ -43,22 +53,18 @@
 
   const ai = new Command({
     name: "ai",
-    parameters: [
-      new Parameter({type: "string", name: "prompt", helpText: "What should AI do with this entire note?", default: "", required: true}),
-      new Parameter({type: "string", name: "length", helpText: "Optional response length: small, medium, or large.", default: "", required: false})
-    ],
+    parameters: [],
     type: "insert",
-    helpText: "Add an AI result below this command without replacing the note.",
+    helpText: "Add an AI result below this command. Use ai(prompt) or ai(prompt, small|medium|large).",
     tutorials: [new TutorialCommand({command: "ai(Convert this into meeting notes)", description: "Turn the note into meeting notes."})],
     extension: extensionRoot
   });
   ai.execute = function (payload) {
-    const params = this.getParsedParams(payload);
-    const prompt = String(params[0] || "").trim();
-    const length = String(params[1] || "").trim().toLowerCase();
+    const args = aiArguments(payload.fullText);
+    const prompt = args.prompt;
+    const length = args.length;
     if (!prompt) return new ReturnObject({status: "error", message: "Add an instruction, for example: ai(Convert this into meeting notes).", payload: payload.fullText || ""});
-    if (length && ["small", "medium", "large"].indexOf(length) === -1) return new ReturnObject({status: "error", message: "Length must be small, medium, or large.", payload: payload.fullText || ""});
-    return processNote(payload, prompt, "custom", length || "default");
+    return processNote(payload, prompt, "custom", length);
   };
 
   const structure = new Command({
