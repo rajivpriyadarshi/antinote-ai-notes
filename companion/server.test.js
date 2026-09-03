@@ -23,6 +23,7 @@ test("AI instructions demand direct output", function () {
   assert.match(prompt, /Return only the finished output/);
   assert.match(prompt, /Never add a preamble/);
   assert.match(prompt, /do not add headings, bullets/);
+  assert.match(server.instructions("custom", "how does this sound"), /Give concise, candid feedback/);
   assert.match(server.instructions("custom", "Summarize", "small"), /under 80 words/);
   assert.doesNotMatch(server.instructions("custom", "Improve this", "default"), /under 80 words/);
   assert.match(server.instructions("structure", ""), /use #, ##, or ###/);
@@ -36,6 +37,11 @@ test("output limit scales safely", function () {
 
 test("OpenAI message output is extracted from the Responses API shape", function () {
   assert.equal(server.openAIOutput({output: [{content: [{type: "output_text", text: "Finished note"}]}]}), "Finished note");
+});
+
+test("feedback prompts discard an unsolicited rewritten version", function () {
+  const output = "Your message is clear, but add one concrete example.\n\nHere's a revised version:\n\nRewritten note\n\nThis version keeps the original tone.";
+  assert.equal(server.feedbackOnly(output), "Your message is clear, but add one concrete example.");
 });
 
 test("provider errors identify the provider without exposing credentials", function () {

@@ -184,12 +184,13 @@ async function ensureLocalServer() {
   throw new Error("Local AI could not start. Try downloading it again from ::ai_setup().");
 }
 
-async function localLLMRequest(content, system, length) {
+async function localLLMRequest(content, system, length, feedback) {
   await ensureLocalServer();
+  const prompt = feedback ? "Note to evaluate:\n" + content + "\n\nReturn exactly one sentence beginning with 'Feedback:'. Do not rewrite, quote, or add to the note." : content;
   const response = await fetch("http://" + HOST + ":" + LOCAL_PORT + "/v1/chat/completions", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({model: "local", messages: [{role: "system", content: system}, {role: "user", content: content}], temperature: 0.2, max_tokens: outputLimit(content, length)}),
+    body: JSON.stringify({model: "local", messages: [{role: "system", content: system}, {role: "user", content: prompt}], temperature: 0.2, max_tokens: feedback ? 80 : outputLimit(content, length)}),
     signal: AbortSignal.timeout(120000)
   });
   const data = await response.json().catch(function () { return {}; });
@@ -236,10 +237,27 @@ function openAIOutput(data) {
   }).join("");
 }
 
+function isFeedbackInstruction(instruction) {
+  return /^how does this sound\??$/i.test(String(instruction || "").trim());
+}
+
+function feedbackOnly(value) {
+  const paragraphs = String(value || "").split(/\n\s*\n/).map(function (part) { return part.trim(); }).filter(Boolean);
+  const feedback = paragraphs.find(function (part) {
+    return !/revised version|here(?:'|’)s|original tone|this version|^---$/i.test(part);
+  });
+  return (feedback || String(value || "")).replace(/^[-#*\s]+|[-#*\s]+$/g, "").trim();
+}
+
 function instructions(mode, instruction, length) {
   if (mode === "custom") {
     const size = {small: " Keep the result under 80 words.", medium: " Keep the result under 250 words.", large: " Keep the result under 700 words."}[length] || "";
-    return "You edit Antinote notes. Follow the user's instruction exactly, including its requested format. If the user asks for prose or a single improved sentence, return prose or a single sentence; do not add headings, bullets, numbering, checklists, or extra sections. Preserve the original meaning and tone unless asked otherwise." + size + " Return only the finished output. Never add a preamble, explanation, disclaimer, or meta-commentary. Do not say 'Here is', 'Based on', 'Sure', or similar.\n\nUser instruction:\n" + instruction;
+    const normalized = String(instruction || "").trim();
+    const feedbackRequest = isFeedbackInstruction(normalized);
+    const vagueRevision = /^(improve this|make this better|polish this|rewrite this)\??$/i.test(normalized);
+    const feedbackRule = feedbackRequest ? " Give concise, candid feedback in one short paragraph. Do not rewrite, repeat, summarize, or add to the note unless the user explicitly asks for a rewrite." : "";
+    const revisionRule = vagueRevision ? " This is a light edit: preserve every factual claim, commitment, idea, point of view, and sentence order. Do not turn direct statements into advice or commentary. Do not add new claims, qualifications, headings, lists, summaries, or commentary. Improve only grammar, clarity, flow, and tone." : "";
+    return "You edit Antinote notes. Follow the user's instruction exactly, including its requested format. If the user asks for prose or a single improved sentence, return prose or a single sentence; do not add headings, bullets, numbering, checklists, or extra sections. Preserve the original meaning and tone unless asked otherwise." + feedbackRule + revisionRule + size + " Return only the finished output. Never add a preamble, explanation, disclaimer, or meta-commentary. Do not say 'Here is', 'Based on', 'Sure', or similar.\n\nUser instruction:\n" + instruction;
   }
   const request = "Organize the note into a logical structure without summarizing or shortening it. Preserve all important details, improve titles and groupings, and remove only genuine repetition. Preserve every existing checklist item and checked state as - [ ] or - [x]. Never replace checklist markers with a bare 'list' keyword.";
   const size = {small: "Keep the result under 80 words.", medium: "Keep the result under 250 words.", large: "Keep the result under 700 words."}[length] || "Preserve the useful detail; do not shorten the note.";
@@ -363,13 +381,14 @@ async function handle(request, response) {
       if (provider === "apple_intelligence") {
         output = await appleIntelligenceRequest(content, system);
       } else if (provider === "local_llm") {
-        output = await localLLMRequest(content, system, length);
+        output = await localLLMRequest(content, system, length, isFeedbackInstruction(instruction));
       } else {
         const key = readKey(provider);
         if (!key) throw new Error("No " + PROVIDERS[provider].label + " API key is saved. Run ::ai_setup().");
         output = await providerRequest(provider, key, config.model || PROVIDERS[provider].model, content, system, length);
       }
-      return send(response, 200, "application/json", JSON.stringify({ok: true, output: formatForAntinote(output, mode)}));
+      const result = mode === "custom" && isFeedbackInstruction(instruction) ? feedbackOnly(output) : output;
+      return send(response, 200, "application/json", JSON.stringify({ok: true, output: formatForAntinote(result, mode)}));
     }
     send(response, 404, "application/json", JSON.stringify({ok: false, error: "Not found."}));
   } catch (error) { send(response, 200, "application/json", JSON.stringify({ok: false, error: error.message || "Request failed."})); }
@@ -377,4 +396,4 @@ async function handle(request, response) {
 
 function start() { const server = http.createServer(handle); server.listen(PORT, HOST, function () { console.log("Antinote AI Notes running at http://" + HOST + ":" + PORT); }); return server; }
 if (require.main === module) start();
-module.exports = {PROVIDERS, loadConfig, saveConfig, validProvider, outputLimit, instructions, providerError, openAIOutput, providerRequest, appleIntelligenceRequest, localStatus, removeLocalAI, localLLMRequest, handle, start};
+module.exports = {PROVIDERS, loadConfig, saveConfig, validProvider, outputLimit, instructions, providerError, openAIOutput, providerRequest, appleIntelligenceRequest, localStatus, removeLocalAI, localLLMRequest, feedbackOnly, handle, start};

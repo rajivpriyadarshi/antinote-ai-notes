@@ -5,8 +5,9 @@ Turn the current [Antinote](https://antinote.io/) page into a clean AI result us
 ## Commands
 
 - `::ai_structure()` reorganizes the whole note into clear, useful sections.
-- `::ai(Convert this into meeting notes)` inserts a small result below the command.
-- `::ai(Convert this into a detailed plan, large)` supports `small`, `medium`, or `large` output.
+- `::ai(Convert this into meeting notes)` inserts the result below the command.
+- `::ai(how does this sound)` gives one concise feedback sentence instead of rewriting the note.
+- `::ai(Convert this into a detailed plan, large)` optionally constrains output to `small`, `medium`, or `large`. Without a size, the model chooses an appropriate length.
 - `::ai_setup()` opens Apple Intelligence and API-provider settings.
 
 AI output is instructed to be direct: no “Here is…”, “Based on…”, explanations, or other filler.
@@ -19,7 +20,7 @@ AI output is instructed to be direct: no “Here is…”, “Based on…”, ex
 4. In **Settings > Privacy**, enable **Let extensions call their own APIs**.
 5. Run `::ai_setup()` and select one of these options:
    - **Apple Intelligence** for Apple's on-device model when it is available.
-   - **Local AI (Qwen)** to download a private model once (about 1.1 GB). It becomes the active provider automatically when the download finishes.
+   - **Local AI (Qwen)** to download a private model once (about 1.1 GB). It becomes the active provider automatically after downloading and validating it. Use **Remove Local AI** in setup to reclaim its disk space.
    - A cloud provider and API key.
 
 If Antinote's official `::ai` command is already enabled, disable its **LLM** extension first so this custom command is unambiguous.
