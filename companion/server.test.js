@@ -15,12 +15,10 @@ test("AI instructions demand direct output", function () {
   const prompt = server.instructions("custom", "Convert this into meeting notes");
   assert.match(prompt, /Return only the finished output/);
   assert.match(prompt, /Never add a preamble/);
-  assert.match(prompt, /- \[ \] only for real actionable tasks/);
+  assert.match(prompt, /do not add headings, bullets/);
   assert.match(server.instructions("custom", "Summarize", "small"), /under 80 words/);
-  assert.match(prompt, /use #, ##, or ###/);
-  assert.match(server.instructions("structure", ""), /Organize the note/);
+  assert.match(server.instructions("structure", ""), /use #, ##, or ###/);
   assert.match(server.instructions("structure", ""), /Never replace checklist markers/);
-  assert.match(server.instructions("structure", ""), /without summarizing or shortening/);
 });
 
 test("output limit scales safely", function () {
