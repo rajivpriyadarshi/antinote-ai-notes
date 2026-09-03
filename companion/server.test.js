@@ -20,6 +20,7 @@ test("AI instructions demand direct output", function () {
   assert.match(prompt, /use #, ##, or ###/);
   assert.match(server.instructions("structure", ""), /Organize the note/);
   assert.match(server.instructions("structure", ""), /Never replace checklist markers/);
+  assert.match(server.instructions("structure", ""), /without summarizing or shortening/);
 });
 
 test("output limit scales safely", function () {

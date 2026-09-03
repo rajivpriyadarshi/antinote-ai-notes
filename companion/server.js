@@ -68,7 +68,7 @@ function openAIOutput(data) {
 
 function instructions(mode, instruction, length) {
   const request = mode === "structure"
-    ? "Organize the note into a logical structure. Preserve important facts, use concise headings and bullets only when useful, and remove repetition. Preserve every existing checklist item and checked state as - [ ] or - [x]. Never replace checklist markers with a bare 'list' keyword."
+    ? "Organize the note into a logical structure without summarizing or shortening it. Preserve all important details, improve titles and groupings, and remove only genuine repetition. Preserve every existing checklist item and checked state as - [ ] or - [x]. Never replace checklist markers with a bare 'list' keyword."
     : instruction;
   const size = {small: "Keep the result under 80 words.", medium: "Keep the result under 250 words.", large: "Keep the result under 700 words."}[length] || "Keep the result under 80 words.";
   return "You edit Antinote notes. " + request + " " + size + " Return only the finished output. Never add a preamble, explanation, disclaimer, or meta-commentary. Do not say 'Here is', 'Based on', 'Sure', or similar. Format specifically for Antinote: use #, ##, or ### for concise headings; use - for bullets; use 1. for ordered steps; use - [ ] only for real actionable tasks. For nested lists, indent child lines with exactly two spaces and keep the same marker style. Never use tables, unicode bullets, checkbox symbols, HTML, or code fences unless explicitly requested. Be direct, crisp, and structured.";

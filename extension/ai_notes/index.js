@@ -69,7 +69,7 @@
     tutorials: [new TutorialCommand({command: "ai_structure", description: "Structure the current note."})],
     extension: extensionRoot
   });
-  structure.execute = function (payload) { return processNote(payload, "", "structure"); };
+  structure.execute = function (payload) { return processNote(payload, "", "structure", "large"); };
 
   const setup = new Command({
     name: "ai_setup",
