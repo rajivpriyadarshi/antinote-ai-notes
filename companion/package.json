@@ -1,0 +1,9 @@
+{
+  "name": "antinote-ai-notes-companion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local AI bridge for Antinote AI Notes",
+  "main": "server.js",
+  "scripts": {"start": "node server.js", "test": "node --test server.test.js"},
+  "engines": {"node": ">=18"}
+}
