@@ -19,6 +19,7 @@ test("AI instructions demand direct output", function () {
   assert.match(server.instructions("custom", "Summarize", "small"), /under 80 words/);
   assert.match(prompt, /use #, ##, or ###/);
   assert.match(server.instructions("structure", ""), /Organize the note/);
+  assert.match(server.instructions("structure", ""), /Never replace checklist markers/);
 });
 
 test("output limit scales safely", function () {
