@@ -2,7 +2,7 @@
   "name": "ai_notes",
   "version": "1.0.0",
   "author": "rajivpriyadarshi",
-  "description": "Turn the current Antinote note into crisp, structured AI output using your own API key.",
+  "description": "Turn the current Antinote note into crisp, structured AI output using Apple Intelligence, Local AI, or your own API key.",
   "license": "MIT",
   "category": "AI & ML",
   "dataScope": "full",
@@ -11,7 +11,7 @@
   "commands": [
     {"name": "ai", "description": "Add a crisp AI result below this command without replacing the note.", "type": "insert"},
     {"name": "ai_structure", "description": "Turn the current note into a clear structured document.", "type": "replaceAll"},
-    {"name": "ai_setup", "description": "Set your provider, model, and API key.", "type": "openURL"}
+    {"name": "ai_setup", "description": "Set Apple Intelligence, Local AI, or an API provider.", "type": "openURL"}
   ],
   "official": false
 }

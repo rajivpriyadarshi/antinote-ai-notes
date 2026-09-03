@@ -75,7 +75,7 @@
     name: "ai_setup",
     parameters: [],
     type: "openURL",
-    helpText: "Set your provider, model, and API key.",
+    helpText: "Set Apple Intelligence, Local AI, or an API provider.",
     tutorials: [new TutorialCommand({command: "ai_setup", description: "Open AI Notes setup."})],
     extension: extensionRoot
   });

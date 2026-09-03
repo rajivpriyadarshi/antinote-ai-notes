@@ -8,7 +8,14 @@ test("only known providers are accepted", function () {
   assert.equal(server.validProvider("openai"), true);
   assert.equal(server.validProvider("anthropic"), true);
   assert.equal(server.validProvider("gemini"), true);
+  assert.equal(server.validProvider("apple_intelligence"), true);
+  assert.equal(server.validProvider("local_llm"), true);
   assert.equal(server.validProvider("other"), false);
+});
+
+test("local AI reports an install state", function () {
+  const status = server.localStatus();
+  assert.match(status.state, /^(not-installed|downloading|installing|ready|error)$/);
 });
 
 test("AI instructions demand direct output", function () {

@@ -15,7 +15,8 @@ if [[ -z "$NODE_BIN" ]] || (( $($NODE_BIN -p 'Number(process.versions.node.split
 fi
 
 mkdir -p "$APP_DIR" "$EXTENSION_DIR" "$HOME/Library/LaunchAgents"
-cp "$SCRIPT_DIR/companion/server.js" "$SCRIPT_DIR/companion/package.json" "$APP_DIR/"
+cp "$SCRIPT_DIR/companion/server.js" "$SCRIPT_DIR/companion/package.json" "$SCRIPT_DIR/companion/apple-intelligence" "$APP_DIR/"
+chmod 755 "$APP_DIR/apple-intelligence"
 cp "$SCRIPT_DIR/extension/ai_notes/index.js" "$SCRIPT_DIR/extension/ai_notes/extension.json" "$EXTENSION_DIR/"
 
 cat > "$LAUNCH_AGENT" <<PLIST
