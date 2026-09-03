@@ -45,7 +45,7 @@
     name: "ai",
     parameters: [
       new Parameter({type: "string", name: "prompt", helpText: "What should AI do with this entire note?", default: "", required: true}),
-      new Parameter({type: "string", name: "length", helpText: "Response length: small, medium, or large.", default: "small", required: false})
+      new Parameter({type: "string", name: "length", helpText: "Optional response length: small, medium, or large.", default: "", required: false})
     ],
     type: "insert",
     helpText: "Add an AI result below this command without replacing the note.",
@@ -55,10 +55,10 @@
   ai.execute = function (payload) {
     const params = this.getParsedParams(payload);
     const prompt = String(params[0] || "").trim();
-    const length = String(params[1] || "small").trim().toLowerCase();
+    const length = String(params[1] || "").trim().toLowerCase();
     if (!prompt) return new ReturnObject({status: "error", message: "Add an instruction, for example: ai(Convert this into meeting notes).", payload: payload.fullText || ""});
-    if (["small", "medium", "large"].indexOf(length) === -1) return new ReturnObject({status: "error", message: "Length must be small, medium, or large.", payload: payload.fullText || ""});
-    return processNote(payload, prompt, "custom", length);
+    if (length && ["small", "medium", "large"].indexOf(length) === -1) return new ReturnObject({status: "error", message: "Length must be small, medium, or large.", payload: payload.fullText || ""});
+    return processNote(payload, prompt, "custom", length || "default");
   };
 
   const structure = new Command({
@@ -69,7 +69,7 @@
     tutorials: [new TutorialCommand({command: "ai_structure", description: "Structure the current note."})],
     extension: extensionRoot
   });
-  structure.execute = function (payload) { return processNote(payload, "", "structure", "large"); };
+  structure.execute = function (payload) { return processNote(payload, "", "structure", "default"); };
 
   const setup = new Command({
     name: "ai_setup",
